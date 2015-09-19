@@ -1,0 +1,58 @@
+
+<script type="text/javascript">
+    require(['product/pdpBrowse/pdp-carousel']);
+</script>
+
+{* Calculate the dimensions of the carousel from the query number and the number of panes that should be visible *}
+{assign var=queryNumber value=$cmsContent->fields.queryNumber->content|escape:"html"|default:10}
+{assign var=panesOnShow value=2}
+{* We clone the first few panes and append them to the end of the list *}
+{* in order to give the illusion of an infinite slider *}
+{assign var=panesToAdd value=$panesOnShow+1}
+{assign var=panesIncClones value=$queryNumber + $panesToAdd}
+{assign var=percentageWidthOfList value=$panesIncClones / $panesOnShow * 100}
+{assign var=fractionOfLeftShiftPane value=0.5}
+{* Middle point in terms of panes is 0.5 (for the first half) + number on show /2  rounded up to the nearest one then we need to minus one because of the 1 index T*}
+{assign var=selectedPane value= ($fractionOfLeftShiftPane + $panesOnShow/2)|round:0 -1}
+{assign var=cloneOfselectedPane value=$panesIncClones-$selectedPane -1}
+{assign var=percentageWidthOfEachPane value=(100 / $panesIncClones)}
+{assign var=leftShift value=-100 * $fractionOfLeftShiftPane / $panesOnShow}
+
+{* Set up variables for the UI query from the CMS *}
+{assign var=productTypeName value=$cmsContent->fields.productTypeName->content|default:"businesscard"}
+{assign var=productTypeAliasName value=$cmsContent->fields.productTypeAliasName->content|default:""}
+{assign var=cardType value=$cmsContent->fields.cardType->content|escape:"html"}
+
+{ui_query name="getLatestPDPs" number=$queryNumber productTypeName=$productTypeName cardType=$cardType}
+{if !empty($uiQueryResult)}
+    <div id="pdpBrowseCarousel">
+        <div class="pdp-carousel-arrow-container">
+            {link href="#prev" linkType="absolute" class="left-button pdp-carousel-arrow-left"}
+                <span class="mooicon-chevron-left"></span>
+            {/link}
+            {link href="#next" linkType="absolute" class="right-button pdp-carousel-arrow-right"}
+                <span class="mooicon-chevron-right" style="float:right"></span>
+            {/link}
+        </div>
+
+        <div class=pdp-carousel>
+            {assign var=clonedPDPs value=$uiQueryResult|@array_slice:0:$panesToAdd}
+            {assign var=pdps value=$uiQueryResult|@array_merge:$clonedPDPs}
+            <ul class=pdp-panes style="width:{$percentageWidthOfList}%; left:{$leftShift}%">
+                {foreach $pdps as $pdpPack}
+                    {assign var=index value=$pdpPack@key}
+                    {assign var=pdpDetailLink value=$pdpPack->getUrlBuilder(false, $productTypeAliasName)->getPdpOrStartUrl()}
+                    <li style="width:{$percentageWidthOfEachPane}%" class="panel-new{if $selectedPane == $index} selected{elseif $cloneOfselectedPane == $index} selected{/if}" data-pdp-id="{$pdpPack->getId()}">
+                        {link href="{$pdpDetailLink}" linkType="localised"}
+                            <figure>
+                                <img src="{$pdpPack->getThumbnailUrl({$cardType})}" alt="{t}{$pdpPack->getName()|escape:html}{/t}">
+                                <figcaption>{t}{$pdpPack->getName()|escape:html}{/t}</figcaption>
+                            </figure>
+                        {/link}
+                    </li>
+                {/foreach}
+            </ul>
+        </div>
+    </div>
+{/if}
+{/ui_query}
